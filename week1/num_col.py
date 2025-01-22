@@ -1,8 +1,8 @@
-# Importing necessary packages
+#CTE Importing necessary packages
 import os
 import numpy as np
 
-# Generating array of points from 1 to 10
+#CTE Generating array of points from 1 to 10
 one_ten=np.arange(1, 11, 1)
 
 def write(filename):
@@ -24,9 +24,9 @@ def write(filename):
 		f.write('{}	{}\n'.format(i, j))
 	f.close()
 
-if os.path.exists('num-col.txt'): # If the file already exists, delete it 
-				  # before writing to a new one
+if os.path.exists('num-col.txt'): #CTE If the file already exists, delete it 
+				  #CTE before writing to a new one
 	os.remove('num-col.txt')
 	write('num-col.txt')
 else:
-	write('num-col.txt') # If the file does not exist, make one and write to it
+	write('num-col.txt') #CTE If the file does not exist, make one and write to it
