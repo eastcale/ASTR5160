@@ -67,17 +67,12 @@ coo = sc('05 55 10.3054 +07 24 25.4304', unit=(u.hourangle, u.deg)) #CTE Betelge
 ra_dec_hand = 15*to_decdeg(5, 55, 10.3054) #CTE Converting to decimal degrees by hand to compare
 decl_dec_hand = to_decdeg(7, 24, 25.4304)
 
-print("RA	RA Unit		DEC	DEC Unit \n-----------------------------------------------\n{}	Hours		{}	Decimal Degrees\n{}	Dec. Deg.	{}	Dec. Deg\n-----------------------------------------------\n                  By Hand\n-----------------------------------------------\n{}	Dec. Deg.	{}	Dec. Deg.\n-----------------------------------------------\nBy Hand Checks Out! :)".format(round(coo.ra.hour, 4), round(coo.dec.degree, 4), round(coo.ra.degree, 4), round(coo.dec.degree, 4), round(ra_dec_hand, 4), round(decl_dec_hand, 4))
+today = ti.now() #CTE Today's date and time
 
-today = ti.now()
+days = np.arange(math.floor(today.mjd) - 5, math.floor(today.mjd) + 5, 1) #CTE Generating the MJDs for the 5 days before today
+									  #CTE and the 5 days after today
 
-print("\nToday is {}\nThe Julian Date is {}\nThe Modified Julian Date is {}\nMJD+2400000.5={}; Checks out!".format(today, today.jd, today.mjd, today.mjd+2400000.5))
-
-days = np.arange(math.floor(today.mjd) - 5, math.floor(today.mjd) + 5, 1)
-
-print("\nThe MJDs from 1/22-1/31 are {}".format(days))
-
-wiro = el(lat = to_decdeg(41, 5, 49)*u.deg, lon = -1*to_decdeg(105, 58, 33)*u.deg, height = 2943) #CTE Geographical coordinates of WIRO
+wiro = el(lat = to_decdeg(41, 5, 49)*u.deg, lon = -1*to_decdeg(105, 58, 33)*u.deg, height = 2943) #CTE Geographical 													  #CTE coordinates of WIRO
 
 obj = sc('12 00 00 +30 00 00', unit=(u.hourangle, u.deg)) #CTE Our given object's coordinates
 
@@ -87,10 +82,19 @@ current_time = ti.now() - utc_offset #CTE The current time in MST
 
 time_to_11 = time_to(current_time, [11, 0, 0]) #CTE Finding the number hours from now to 11 pm
 
-obs_time = np.array([current_time + time_to_11, current_time + time_to_11 + 30*u.day]) #CTE Setting observation times for 11 pm tonight as well as 11 pm a month from now.
+obs_time = np.array([current_time + time_to_11, current_time + time_to_11 + 30*u.day]) #CTE Setting observation times for 
+										       #CTE 11 pm tonight as well as 11 pm
+										       #CTE a month from now.
 
 obj_altaz = obj.transform_to(AltAz(obstime=obs_time, location=wiro)) #CTE Finding Alt/Az coords. for our object
 
 airmass = obj_altaz.secz #CTE .secz calculates the airmass where z is 90-alt
+
+#CTE A bunch of print statements to summarize results
+print("RA	RA Unit		DEC	DEC Unit \n-----------------------------------------------\n{}	Hours		{}	Decimal Degrees\n{}	Dec. Deg.	{}	Dec. Deg\n-----------------------------------------------\n                  By Hand\n-----------------------------------------------\n{}	Dec. Deg.	{}	Dec. Deg.\n-----------------------------------------------\nBy Hand Checks Out! :)".format(round(coo.ra.hour, 4), round(coo.dec.degree, 4), round(coo.ra.degree, 4), round(coo.dec.degree, 4), round(ra_dec_hand, 4), round(decl_dec_hand, 4)))
+
+print("\nToday is {}\nThe Julian Date is {}\nThe Modified Julian Date is {}\nMJD+2400000.5={}; Checks out!".format(today, today.jd, today.mjd, today.mjd+2400000.5))
+
+print("\nThe MJDs for 5 days before today to 5 days after today are:\n{}".format(days))
 
 print("\nThe airmass of our source on {} is {}.\nThe airmass of our source on {} is {}.".format(obs_time[0], airmass[0], obs_time[1], airmass[1]))
