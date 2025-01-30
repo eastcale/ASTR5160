@@ -80,7 +80,7 @@ utc_offset = -7 * u.hour #CTE UTC is 7 hours ahead of MST
 
 current_time = ti.now() - utc_offset #CTE The current time in MST
 
-time_to_11 = time_to(current_time, [11, 0, 0]) #CTE Finding the number hours from now to 11 pm
+time_to_11 = time_to(current_time, [23, 0, 0]) #CTE Finding the number hours from now to 11 pm
 
 obs_time = np.array([current_time + time_to_11, current_time + time_to_11 + 30*u.day]) #CTE Setting observation times for 
 										       #CTE 11 pm tonight as well as 11 pm
