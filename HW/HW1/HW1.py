@@ -7,14 +7,7 @@ from astropy.time import Time as ti
 import calendar
 import pandas as pd
 import argparse
-
-parser = argparse.ArgumentParser()
-parser.add_argument('month', help='What month are you observing in? Enter an int from 1-12.')
-args = parser.parse_args()
-
-path = open('/d/scratch/ASTR5160/week4/HW1quasarfile.txt')
-
-dat = path.readlines()
+import os
 
 def to_radec(dat):
 	"""
@@ -40,7 +33,8 @@ def to_radec(dat):
 		'00d00m00.0s'
 	"""
 
-	ra_list = [] #CTE Empty list to append to in the loop
+	#CTE Empty list to append to in the loop
+	ra_list = [] 
 	dec_list = []
 
 	#CTE Indexing the proper slices of the string for each unit
@@ -54,7 +48,8 @@ def to_radec(dat):
 		a_m = i[12:14]
 		a_s = i[14:18]
 
-		ra = f'{h}h{m}m{s}s' #CTE Formatting coordinates in the right form
+		#CTE Formatting coordinates in the right form
+		ra = f'{h}h{m}m{s}s' 
 		dec = f'{sign}{d}d{a_m}m{a_s}s'
 
 		ra_list.append(ra)
@@ -130,11 +125,19 @@ def max_alt(loc, coordinates, dates):
 	airmass = []
 
 	for i in dates:
-		altaz = AltAz(location = loc, obstime = i) #CTE Setting location and obseration time
-		coos_altaz = coordinates.transform_to(altaz) #CTE Converting given coordinates to AltAz at the given time and place
-		max_altitude_index = np.where((coos_altaz.alt.deg == max(coos_altaz.alt.deg)))[0][0] #CTE Getting the index of the object with
-																												  #CTE the highest altitude
-		air_mass = 1/(np.cos(np.radians(90-coos_altaz.alt.deg[max_altitude_index]))) #CTE Calculating the airmass of the object with highest alt
+		#CTE Setting location and obseration time
+		altaz = AltAz(location = loc, obstime = i)
+
+		#CTE Converting given coordinates to AltAz at the given time and place 
+		coos_altaz = coordinates.transform_to(altaz)
+
+		#CTE Getting the index of the object with the highest altitude
+		max_altitude_index = np.where((coos_altaz.alt.deg == max(coos_altaz.alt.deg)))[0][0]
+
+		#CTE Calculating the airmass of the object with highest alt
+		air_mass = coos_altaz[max_altitude_index].secz 
+
+		#CTE Appending results to empty lists
 		max_targ.append(max_altitude_index)
 		airmass.append(air_mass)
 
@@ -143,45 +146,79 @@ def max_alt(loc, coordinates, dates):
 
 	return airmass_arr, max_targ_arr
 
-ras, decs = to_radec(dat) #CTE Converting the coords from the .txt file into proper coordinates
+if __name__ == '__main__':
 
-coos = sc(ra = ras, dec = decs, unit=(u.hourangle, u.deg)) #CTE Generating a coord obj for each coordinate
+	#CTE Setting arguments for argeparse
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--month', help='What month are you observing in? Enter an int from 1-12.', choices=[str(i) for i in range(13)]) 
+	parser.add_argument('--save', help='Would you like to save data as a table? Enter y or n. Default is n', default = 'n', choices = ['y', 'n'])
+	args = parser.parse_args()
 
-kp = el.of_site('kpno') #CTE Setting observation location to Kitt Peak
+	#CTE Reading in data
+	dep_path = '/d/scratch/ASTR5160/week4/HW1quasarfile.txt'
+	lap_path = '/Users/calebeastlund/Desktop'
 
-year = ti.now().ymdhms[0] #CTE Getting the current year
+	if os.path.exists(dep_path):
+		path = open(dep_path)
+	elif os.path.exists(lap_path):
+		paht = open(lap_path)
 
-month = int(args.month) #CTE Month is provided by user
+	dat = path.readlines()
 
-day = make_days(month, year) #CTE Based on month and year, gets the proper dates
+	#CTE Converting the coords from the .txt file into proper coordinates
+	ras, decs = to_radec(dat) 
+	
+	#CTE Generating a coord obj for each coordinate
+	coos = sc(ra = ras, dec = decs, unit=(u.hourangle, u.deg)) 
 
-times = []
+	#CTE Setting observation location to Kitt Peak
+	kp = el.of_site('kpno') 
 
-#CTE Since UTC is 7 hrs ahead of MST, setting obsveration times to 11 pm MST
-#CTE is actually setting them to 6 am UTC on the next morning.
-for i in day:
-	if i != day[-1]:
-		times.append(ti(f'{year}-{month}-{i+1}T06:00:00'))
-	elif i == day[-1]:
-		if month == 12:
-			month2 = 1
-		else:
-			month2 = month + 1
-		times.append(ti(f'{year}-{month2}-01T06:00:00'))
+	#CTE Getting the current year
+	year = ti.now().ymdhms[0] 
 
-times = np.array(times) #CTE Turning 'times' list into an array to do math with
-times_tab = np.array([i-7*u.hour for i in times]) #CTE Converting times to MST to print to table
+	#CTE Month is provided by user
+	month = int(args.month) 
 
-airmass, max_targ = max_alt(kp, coos, times)
+	#CTE Based on month and year, gets the proper dates
+	day = make_days(month, year) 
 
-#CTE Evaluating each of the relevant parameters at the max altitude (lowest airmass) value.
-q_coos = [dat[i] for i in max_targ]
-ra = coos.ra.deg[max_targ]
-dec = coos.dec.deg[max_targ]
-airmasses = np.copy(airmass)
+	#CTE Since UTC is 7 hrs ahead of MST, setting obsveration times to 11 pm MST
+	#CTE is actually setting them to 6 am UTC on the next morning.
+	times = []
 
-#CTE Making a data table
-tab = {'Date' : times_tab, 'Quasar Coordinates (hms dms)' : q_coos, 'RA (deg)' : ra, 'DEC (deg)' : dec, 'Airmass' : airmasses}
-df = pd.DataFrame(tab)
-print(df)
-df.to_csv(f'q-obs-{month}.csv', index=False)
+	for i in day:
+		if i != day[-1]:
+			times.append(ti(f'{year}-{month}-{i+1}T06:00:00'))
+		elif i == day[-1]:
+			if month == 12:
+				month2 = 1
+			else:
+				month2 = month + 1
+			times.append(ti(f'{year}-{month2}-01T06:00:00'))
+
+	#CTE Turning 'times' list into an array to do math with
+	times = np.array(times) 
+
+	#CTE Converting times to MST to print to table
+	times_tab = np.array([i-7*u.hour for i in times])
+
+	airmass, max_targ = max_alt(kp, coos, times)
+
+	#CTE Evaluating each of the relevant parameters at the max altitude (lowest airmass) value.
+	q_coos = [dat[i] for i in max_targ]
+	ra = coos.ra.deg[max_targ]
+	dec = coos.dec.deg[max_targ]
+	airmasses = np.copy(airmass)
+
+	#CTE Making a data table
+	save = args.save
+
+	tab = {'Date' : times_tab, 'Quasar Coordinates (hms dms)' : q_coos, 'RA (deg)' : ra, 'DEC (deg)' : dec, 'Airmass' : airmasses}
+	df = pd.DataFrame(tab)
+
+	if save == 'n':
+		print(df)
+	elif save == 'y':
+		print(df)
+		df.to_csv(f'q-obs-{month}.csv', index=False)
