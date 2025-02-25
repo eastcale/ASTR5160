@@ -18,8 +18,11 @@ def to_cart(ra, dec):
 		The Cartesian Coordinates corresponding to the given Equatorial Coordinates
     """
 
-    ra_rad = np.radians(15 * ra) #CTE Converting the RA to degrees, then to radians
-    dec_rad = np.radians(dec) #CTE Converting the DEC to radians
+    #CTE Converting the RA to degrees, then to radians
+    ra_rad = np.radians(15 * ra)
+
+    #CTE Converting the DEC to radians
+    dec_rad = np.radians(dec) 
 
     x = np.cos(ra_rad)*np.cos(dec_rad)
     y = np.sin(ra_rad)*np.cos(dec_rad)
@@ -29,7 +32,7 @@ def to_cart(ra, dec):
     
     return xyz
 
-def ra_cap(ra):
+def ra_cap(ra, pm=1):
 	"""
     Creates a vector 4-array (x, y, z, 1-h) for a spherical
     cap bounded by the given right ascension.
@@ -38,6 +41,11 @@ def ra_cap(ra):
     ----------
     ra : int or float
     	The right ascension (in hours) bounding the spherical cap.
+
+    pm : int
+        Options are 1 or -1. If 1, gives a standard vector for the spherical
+        cap. If -1, gives a vector equal in magnitude but opposite in direction
+        to the standard vector.
 
     Returns
     -------
@@ -48,13 +56,14 @@ def ra_cap(ra):
 
 	dec = 0
 
-	xyz = to_cart(ra+90/15, dec) #CTE RA in hours + 90 deg / 15 hr/deg
+    #CTE RA in hours + 90 deg / 15 hr/deg
+	xyz = to_cart(ra+90/15, dec) 
 
-	ra_bound = [xyz[0], xyz[1], xyz[2], 1]
+	ra_bound = [xyz[0], xyz[1], xyz[2], pm]
 
 	return ra_bound
 
-def dec_cap(dec):
+def dec_cap(dec, pm=1):
 	"""
     Creates a vector 4-array (x, y, z, 1-h) for a spherical
     cap bounded by the given declination.
@@ -63,6 +72,11 @@ def dec_cap(dec):
     ----------
     dec : int or float
     	The declination (in degrees) bounding the spherical cap.
+
+    pm : int
+        Options are 1 or -1. If 1, gives a standard vector for the spherical
+        cap. If -1, gives a vector equal in magnitude but opposite in direction
+        to the standard vector.
 
     Returns
     -------
@@ -76,13 +90,13 @@ def dec_cap(dec):
 
 	xyz = to_cart(ra, dec1)
 
-	h = 1-np.sin(np.radians(dec))
+	h = pm*(1-np.sin(np.radians(dec)))
 
 	dec_bound = [xyz[0], xyz[1], xyz[2], h]
 
 	return dec_bound
 
-def sph_cap(ra, dec, theta):
+def sph_cap(ra, dec, theta, pm=1):
 	"""
     Creates a vector 4-array (x, y, z, 1-h) for a spherical
     cap representing a circular field drawn on the surface
@@ -100,6 +114,11 @@ def sph_cap(ra, dec, theta):
     theta : int or float
     	The radius (in degrees) of the circular field.
 
+    pm : int
+        Options are 1 or -1. If 1, gives a standard vector for the spherical
+        cap. If -1, gives a vector equal in magnitude but opposite in direction
+        to the standard vector.
+        
     Returns
     -------
 	cap : list of floats
@@ -108,7 +127,7 @@ def sph_cap(ra, dec, theta):
 
 	xyz = to_cart(ra, dec)
 
-	h = 1-np.cos(np.radians(theta))
+	h = pm*(1-np.cos(np.radians(theta)))
 
 	cap = [xyz[0], xyz[1], xyz[2], h]
 
@@ -137,16 +156,82 @@ def cap_to_str(cap, digits):
 
 	return capstr
 
-racap = ra_cap(5)
-deccap = dec_cap(36) #CTE Result is [6.123233995736766e-17, 0.0, 1.0, 0.41221474770752686] but am told it should be
-							 #CTE [0, 0, 1, 0.4122...]. Rounding?
+def to_poly(file_name, n_poly, n_cap, c_list, c1 = 'None', c2 = 'None', area = 'n'):
+    """
+    Writes a text file for n_poly polygons in a pymangle readable format. 
+    Each polygon has a corresponding index in n_cap to specify the number of caps.
+    c_list is a list that is n_poly lists long, each one with the corresponding
+    number of caps.
 
-deccap[0] = 0.0 #CTE Manually setting deccap[0] to zero to match the notes
+    Parameters
+    ----------
+    file_name : str
+        The name of the file to be written
+    
+    n_poly : int
+        The number of polygons to be written to the file
 
-cap = sph_cap(5, 36, 1)
+    n_cap : list of ints
+        The number of caps for each polygon.
 
-with open('caps.txt', 'w') as file:
-	file.write(f'1 polygons\npolygon 1 ( 3 caps, 1 weight, 0 pixel, 0 str):\n')
-	file.write(f' {cap_to_str(racap, 11)}\n')
-	file.write(f' {cap_to_str(deccap, 17)}\n')
-	file.write(f' {cap_to_str(cap, 9)}')
+    c_list : list of lists of ints
+        For i in n_cap, each term in c_list has i number of caps,
+        given by the cap_to_str function. ie., for n_cap = [1, 2], 
+        c_list = [[cap1], [cap2, cap3]]
+
+    c1 : list of floats
+        The coordinates of the bottom left corner of the bounded shape
+        (right now, only rectangular shapes are accepted) in the form:
+        [ra (hours), dec (deg)]. Default is 'None' is no input is given.
+
+    c2 : list of floats
+        The coordinates of the upper right corner of the bounded shape
+        (right now, only rectangular shapes are accepted) in the form:
+        [ra (hours), dec (deg)]. Default is 'None' is no input is given.
+
+    area : str
+        Options are 'y' or 'n'. If 'y', then the area of the bounded shape
+        is calculated in steradians and put into the polygon file. If 'n',
+        then the area is given to be 0 steradians. Default is 'n'.
+
+    Returns
+    -------
+    None
+    """
+
+    #CTE Determining the area of the polygon
+    if area == 'n':
+        ster = 0
+    elif area == 'y' and c1 != 'None' and c2 != 'None':
+        da =  np.radians(15 * c2[0]) - np.radians(15 * c1[0])
+        dd =  np.sin(np.radians(c2[1])) - np.sin(np.radians(c1[1]))
+
+        ster = round((da * dd), 8)
+
+    #CTE Writing the polygon parameters in a pymangle readable format.
+    with open(file_name, 'w') as file:
+        file.write(f'{n_poly} polygons\n')
+        for i in range(n_poly):
+            file.write(f'polygon {i+1} ( {n_cap[i]} caps, 1 weight, 0 pixel, {ster} str):\n')
+            for j in range(n_cap[i]):
+                file.write(f' {c_list[i][j]}\n')
+
+if __name__ == '__main__':
+    racap = ra_cap(5)
+
+    #CTE Result is [6.123233995736766e-17, 0.0, 1.0, 0.41221474770752686] but am told it should be                             
+    #CTE [0, 0, 1, 0.4122...]. Rounding? VVV
+    deccap = dec_cap(36)
+
+    #CTE Manually setting deccap[0] to zero to match the notes 
+    deccap[0] = 0.0 
+
+    cap = sph_cap(5, 36, 1)
+
+    ra_cap_str = cap_to_str(racap, 11)
+    dec_cap_str = cap_to_str(deccap, 17)
+    cap_str = cap_to_str(cap, 9)
+
+    c_list = [[ra_cap_str, dec_cap_str, cap_str]]
+
+    to_poly('caps.txt', 1, [3], c_list)
