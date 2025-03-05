@@ -1,67 +1,64 @@
-import numpy as np
+from astropy.table import Table
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit as cf
+import numpy as np
+from PIL import Image as im 
 import os
-from PIL import Image as im
 import math
 
-def line(x, m, b):
+def save_show(file_name):
 	"""
-	Given x, m, and b, return y according to y = m*x+b (a line)
+	Intended to be used after a figure has been made. Given a file name, 
+	checks if the file exists and deletes it if so. Saves a new one and
+	displays it.
 	
 	Parameters
 	----------
-	x : float or array of floats
-		A value or values for x (the independent variable) 
-		to generate the result, y (the dependent variable)
-	
-	m : float
-		A value for the slope of the line
-	
-	b : float
-		A value for the y-intercept of the line
-	
+	file_name : string
+		The desired name of the file to be saved.
+		
 	Returns
     	-------
-    	y : float or array of floats
-    		A value or values of y generated according to y=m*x+b
+    	None
 	"""
-	y = m*x+b
+	if os.path.exists(file_name):
+		yn = input("Overwrite existing version of {} (y/n)? ".format(file_name))
+		if yn == "y":
+			os.remove(file_name)
+			fig.savefig(file_name)
+		elif yn == "n":
+			print("Did not save new version of {}.".format(file_name))
+	else:
+		fig.savefig(file_name) #CTE If the image does not exist, save a new one in the pwd
 	
-	return y
-
-def scatter(m, b):
+	dis = input("Display {} (y/n)? ".format(file_name))
+	 
+	if dis == "y":
+		im.open(file_name).show() #CTE Show the saved image using any viewer available
+	else:
+		pass
+	
+def fits_write(file_name, tab):
 	"""
-	Given m, and b, return y (determined by line()) scattered in the +/- y axis by a magnitude given by
-	a random value pull from a Gaussian centered at 0 and a standard deviation of 0.5
+	Used to save a recarray (as a table) to a fits file. If the file already exists,
+	asks user if they would like to overwrite. Does not write anything if user says no.
 	
 	Parameters
 	----------
-	m : float
-		A value for the slope of the line given to the function line()
-	
-	b : float
-		A value for the y-intercept of the line given to the function line()
-	
-	Returns
-    	-------
-    	x : array of floats
-    		The independent variable in the function y = m*x+b
-    	
-    	y : array of floats
-    		The dependent variable in the function y = m*x+b
-    	
-    	err : array of floats
-    		The amount by which the original y values from line() were scattered
+	file_name : string
+		The desired name of the fits file to be saved.
+		
+	tab : astropy.table.Table
+		The table to be written to a fits file
 	"""
-	x = np.random.uniform(0, 10, 10)
-	
-	y = line(x, m, b)
-	
-	err = np.random.normal(0, 0.5, np.size(y))
-	
-	return x, y+err, err
-	
+	if os.path.exists(file_name):
+		yn = input("Overwrite existing version of {} (y/n)? ".format(file_name))
+		if yn == "y":
+			tab.write(file_name, overwrite=True)
+		elif yn == "n":
+			print("Did not save new version of {}.".format(file_name))
+	else:
+		tab.write(file_name)
+		
 def min_max(x, err):
 	"""
 	Given an array, finds ideal minimum and maximum integer 
@@ -212,51 +209,43 @@ def ticks(ax, x, y, xerr, yerr):
 
 	axy.tick_params(axis='both', which='major', direction='in', length=5)
 	axy.tick_params(axis='both', which='minor', direction='in', length=3)
-	
-def save_show(file_name):
-	"""
-	Intended to be used after a figure has been made. Given a file name, 
-	checks if the file exists and deletes it if so. Saves a new one and
-	displays it.
-	
-	Parameters
-	----------
-	file_name : string
-		The desired name of the file to be saved.
-		
-	Returns
-    	-------
-    	None
-	"""
-	if os.path.exists(file_name): #CTE If the resulting image exists, delete it and save a new one in the pwd
-		os.remove(file_name)
-		fig.savefig(file_name)
-	else:
-		fig.savefig(file_name) #CTE If the image does not exist, save a new one in the pwd
-		
-	im.open(file_name).show() #CTE Show the saved image using any viewer available
 
-try:
-	m = float(input("Slope: ")) #CTE Asks user for slope input
-	b = float(input("y-intercept: ")) #CTE Asks user for y-intercept input
-except ValueError:
-	raise ValueError('Expected a number. Please input a number.')
+objs = Table.read("/d/scratch/ASTR5160/week2/struc.fits")
 
-x, y, err = scatter(m, b) #CTE Runs scatter() with the m/b user values
-yerr = np.array(np.size(err)*[0.5]) #CTE Explicitly setting the y error to be 0.5 for each point (as specified in HW0 doc)
-xerr = np.array(np.size(err)*[0]) #CTE Explicitly setting x error to be 0 for each point 
+ext_more = objs["EXTINCTION"][:,0] >= 0.22
 
-params, cov=cf(line, x, y) #CTE Generating best fit parameters from scipy.optimize.curve_fit()
+ra, dec = objs["RA"], objs["DEC"]
+
+ra_ext_more, dec_ext_more = ra[ext_more], dec[ext_more]
 
 fig, ax=plt.subplots()
 
-ax.plot(x, line(x, m, b), color='black', label='Original: m = {:.3f}; b = {:.3f}'.format(m, b), zorder=1)
-ax.plot(x, line(x, *params), color='red', label='Model: m = {:.3f}; b = {:.3f}'.format(*params), zorder=2)
-ax.scatter(x, y, color='navy', label='Data', zorder=3)
-ax.errorbar(x, y, yerr=np.abs(yerr), linestyle='', color='navy', zorder=4)
+ax.plot(ra, dec, "bx")
 
-ticks(ax, x, y, xerr, yerr) #CTE Adjusting the axes using ticks()
+ax.plot(ra_ext_more, dec_ext_more, "rx", label="Ext. $\geq$ 0.22")
 
-ax.legend(loc='best')
+ticks(ax, ra, dec, np.array(np.size(ra)*[0]), np.array(np.size(ra)*[0])) #CTE Using ticks() to set tick parameters;
+									 #CTE the two arrays are to set the errors for each
+									 #CTE axis to zero
 
-save_show('line-plot.png') #CTE Saving and displaying the result of most recent plot.
+ax.set_xlabel("Right Ascension")
+ax.set_ylabel("Declination")
+
+ax.invert_xaxis() #CTE Flipping the x axis to fit with standard RA convention
+
+ax.legend(loc = 'best')
+
+save_show('recarray-prac.png')
+
+randnum1 = np.random.randint(1, 100, 100)
+randnum2 = np.random.randint(1, 100, 100)
+randnum3 = np.random.randint(1, 100, 100)
+
+randnum = np.reshape(np.concatenate((randnum1, randnum2, randnum3)), (100, 3)) #CTE Stitching and reshaping the three arrays
+
+ra_cop = np.copy(ra)
+dec_cop = np.copy(dec)
+
+tab = Table([ra_cop, dec_cop, randnum], names=["RA", "DEC", "RANDNUM"])
+
+fits_write("recarray-prac.fits", tab)
