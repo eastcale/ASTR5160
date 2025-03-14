@@ -17,33 +17,58 @@ import pandas as pd
 # where
 #     p.objID = n.objID
 
-dat = pd.read_csv('/dor1/caleb/Classes/AstrTechII/Notes/week8/week8-code/sql_gmag.csv')
-df = pd.DataFrame(dat)
-ID, ra, dec, g = np.array(df['ObjID']), np.array(df['ra']), np.array(df['dec']), np.array(df['g'])
-
 def set_bin(x, xmax, xmin):
+	"""
+    Given an array of values, finds the indices for all values that
+    are within [xmin, xmax). i.e. all points that are greater than or
+    equal to xmin and less than xmax.
+	
+    Parameters
+    ----------
+    x : array of floats or array of ints
+    	The data to be binned
+	
+	xmin ; int or float
+		The lower value for the bin. Binning includes this value
+
+	xmax : int or float
+		The upper value for the bin. Binning does not include this value
+
+    Returns
+    -------
+    ind : array of ints
+    	An array of indices from x that fit within [xmin, xmax)
+    """
+
 	ind = np.where((x >= xmin) & (x < xmax))
 	return ind
 
-bins = np.arange(np.floor(min(g)), np.floor(max(g)), 1)
+if __name__ == '__main__':
+	#CTE Reading in relevant data from SQL Search
+	dat = pd.read_csv('/dor1/caleb/Classes/AstrTechII/Notes/week8/week8-code/sql_gmag.csv')
+	df = pd.DataFrame(dat)
+	ID, ra, dec, g = np.array(df['ObjID']), np.array(df['ra']), np.array(df['dec']), np.array(df['g'])
 
-index_dict = dict(zip([f'bin{i+1}' for i in range(len(bins)-1)], 
-	[set_bin(g, bins[i+1], bins[i]) for i in range(len(bins)-1)])) 
+	#CTE Setting bins that are 1 magnitude apart going from the lowest magnitude value to the highest
+	bins = np.arange(np.floor(min(g)), np.floor(max(g)), 1)
 
-coos_dict = dict(zip([f'{i} coos' for i in index_dict.keys()], 
-	[[ra[index_dict[i]], dec[index_dict[i]]] for i in index_dict.keys()]))
+	#CTE Creating a dictionary with g indices that correspond to each bin
+	index_dict = dict(zip([f'bin{i+1}' for i in range(len(bins)-1)], 
+		[set_bin(g, bins[i+1], bins[i]) for i in range(len(bins)-1)])) 
 
-x_ticks = [300-0.04, 300+0.04, 0.01, 0.002]
-y_ticks = [-1-0.04, -1+0.04, 0.01, 0.002]
+	#CTE Creating a dictionary of coordinates for objects that are within each bin
+	coos_dict = dict(zip([f'{i} coos' for i in index_dict.keys()], 
+		[[ra[index_dict[i]], dec[index_dict[i]]] for i in index_dict.keys()]))
 
-fig, ax = plt.subplots()
+	#CTE Plotting all points with larger markers having lower g magnitudes (i.e. brighter)
+	fig, ax = plt.subplots()
 
-size = np.flip(np.linspace(0.001, 200, np.size(bins)))
+	size = np.flip(np.linspace(0.001, 200, np.size(bins)))
 
-for i, j in zip(coos_dict.keys(), size):
-	ax.scatter(coos_dict[i][0], coos_dict[i][1], color='navy', s = j, alpha = 0.5, edgecolors='none')
+	[ax.scatter(coos_dict[i][0], coos_dict[i][1], color='navy', s = j, alpha = 0.5, edgecolors='none')
+	 for i, j in zip(coos_dict.keys(), size)]
 
-ax.set_aspect('equal')
-ax.invert_xaxis()
+	ax.set_aspect('equal')
+	ax.invert_xaxis()
 
-save_show(fig, 'sql-plot-g.svg')
+	save_show(fig, 'sql-plot-g.svg')

@@ -13,9 +13,6 @@ from astropy.io import fits
 import os
 import glob
 
-def sdss_cmatch(ra, dec, file):
-	[os.system(f'python sdssDR9query.py {i} {j} >> {file}.txt') for i, j in zip(ra_100, dec_100)]
-
 def decode_sweep_name(sweepname, nside=None, inclusive=True, fact=4):
     """Retrieve RA/Dec edges from a full directory path to a sweep file
 
@@ -94,31 +91,98 @@ def is_in_box(objs, radecbox):
 
     return ii
 
+def sdss_cmatch(ra, dec, file):
+	"""
+    Given an array of RAs and DECs, 
+    queries SDSS using sdssDR9query.py for objects near each point 
+    and writes results to a file.
+	
+    Parameters
+    ----------
+    ra : array of floats
+    	Right ascension coordinates in degrees,
+	
+	dec ; array of floats
+		Declination coordinates in degrees
+
+	file : str
+		The file name to write to. If existing, will append
+
+    Returns
+    -------
+    None
+    """
+
+	[os.system(f'python sdssDR9query.py {i} {j} >> {file}.txt') for i, j in zip(ra, dec)]
+
 def in_sweeps(directory, table):
+	"""
+    Given a directory containing sweep files and a table with 
+    atleast RA and DEC columns, returns the path to any sweep file
+    that contains atleast one point from the given table.
+	
+    Parameters
+    ----------
+    directory : str
+    	The full path to the directory containing the sweep files.
+	
+	table ; astropy.table Table
+		Table of data; must contain atleast RA and DEC columns
+
+    Returns
+    -------
+    in_sweeps ; list of str
+    	A list of paths to any sweep file that contains atleast one of the given points.
+    """
+
+    #CTE Setting the directory to search through
 	sweeps_dir = directory
 	sweep_list = np.array(glob.glob(sweeps_dir + "/*.fits"))
 
+	#CTE Creating a list of boxes from the sweep names
 	boxes = [decode_sweep_name(i) for i in sweep_list]
 
+	#CTE Checking every point in every box,
+	#CTE and creating a list that is len(boxes) long, where
+	#CTE each term is len(table) long containing True or False
+	#CTE for if a point is in the box.
 	in_box = [is_in_box(table, i) for i in boxes]
 
+	#CTE Creating an array of True/False that is len(boxes) long
+	#CTE that assigns True to any box that has atleast one point from table
 	true_false = np.array([np.any(i) for i in in_box])
 
+	#CTE Finding the box indices for all Trues
 	indexes = np.where(true_false == True)[0]
 
+	#CTE Evaluating the sweep list at all Trues from above
 	in_sweeps = sweep_list[indexes]
 
 	return in_sweeps
 
 if __name__ == '__main__':
+	#CTE Reading in the FIRST radio data
 	first_tab = Table.read('/d/scratch/ASTR5160/data/first/first_08jul16.fits')
+
+	#CTE Giving columns for first_tab
 	first_cols = first_tab.columns
+
+	#CTE Getting RA and DEC coordinates from first_tab
 	ra, dec = first_tab['RA'], first_tab['DEC']
 
+	#CTE Getting the first 100 rows of first_tab
 	first_tab100 = first_tab[0:100]
 
-	ra_100, dec_100 = ra[0:100], dec[0:100]
+	#CTE Getting the first 100 points of first_tab
+	ra_100, dec_100 = ra['RA'], dec['DEC']
 
+	#CTE Cross matching the first 100 points of first_tab with SDSS
+	#CTE This is commented out because it takes so long!!
+	# sdss_cmatch(ra_100, dec_100, 'sdss_cmatch')
+
+	first_sweeps = in_sweeps('/d/scratch/ASTR5160/data/legacysurvey/dr9/north/sweep/9.0', first_tab100)
+
+	#CTE Plotting all points in first_tab
 	fig, ax = plt.subplots()
 
 	ax.scatter(ra, dec, color='navy', s = .0001)
@@ -131,7 +195,3 @@ if __name__ == '__main__':
 
 	save_show(fig, 'first_08jul16.png')
 
-	#CTE This is commented out because it takes so long!!
-	# sdss_cmatch(ra_100, dec_100, 'sdss_cmatch')
-
-	first_sweeps = in_sweeps('/d/scratch/ASTR5160/data/legacysurvey/dr9/north/sweep/9.0', first_tab100)
