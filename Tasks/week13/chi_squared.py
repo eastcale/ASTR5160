@@ -36,7 +36,7 @@ def chisq(o, sig, e):
         A chi-squared value for every model given.
     """    
 
-	chisq = [np.sum([((j - k) ** 2)/(l ** 2) for j, k, l in zip(o, i, sig)]) for i in model_y]
+	chisq = [np.sum([((j - k) ** 2)/(l ** 2) for j, k, l in zip(o, i, sig)]) for i in e]
 
 	return chisq
 
@@ -55,6 +55,9 @@ if __name__ == '__main__':
 	#CTE itertools.product() is going to find every combination of
 	#CTE ms and bs to build a grid (36 combinations in my case)
 	mbs = list(itertools.product(ms, bs))
+
+	#CTE Making an x array for plotting (placed at the center of each bin)
+	x_dat = np.arange(0.5, 10.5, 1)
 
 	#CTE Generating a list of 36 lists that have the y-values for every (m, b) combination
 	y_expect = np.array([line(x_dat, i[0], i[1]) for i in mbs])
@@ -83,9 +86,6 @@ if __name__ == '__main__':
 	#CTE Plotting all of my lines
 	#CTE Highlighitng the line with the lowest chi-squared
 	fig, ax = plt.subplots()
-
-	#CTE Making an x array for plotting (placed at the center of each bin)
-	x_dat = np.arange(0.5, 10.5, 1)
 
 	[ax.scatter(len(dat[:,i])*[x_dat[i]], dat[:,i], color='navy') for i in range(len(dat[0]))]
 	[ax.plot(x_dat, i, alpha=0.25) for i in y_expect]
