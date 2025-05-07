@@ -534,18 +534,15 @@ def f_to_m(flux):
         and the magnitude is undefined (np.nan).
     """
 
-    #CTE Making a copy of flux to do operations on
-    m = np.copy(flux)
-    m = m.astype(float)
-
     #CTE Setting magnitudes for all objects
     #CTE with negative fluxes to np.nan
     #CTE as a negative flux means no detection
-    no_det = flux <= 0
-    m[no_det] = np.nan
-    
+    f = np.asarray(flux)
+    m = np.full_like(f, np.nan)
+
     #CTE Converting all other fluxes to magnitudes
-    m[~no_det] = [22.5 - 2.5*np.log10(i) for i in m[~no_det]]
+    good = f > 0
+    m[good] = 22.5 - 2.5 * np.log10(f[good])
 
     return m
 

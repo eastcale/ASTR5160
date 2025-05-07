@@ -71,13 +71,16 @@ def sph_area(ra, dec, no_dot = None):
     #CTE Find the area of the given box
     area = (180 / np.pi ) ** 2 * (ra[1] - ra[0]) * (np.sin(dec[1]) - np.sin(dec[0]))
 
-    #CTE Calculate the total area of a sphere
-    sphere = 4 * np.pi * (180 / np.pi) ** 2
+    if no_dot != None:
+        #CTE Calculate the total area of a sphere
+        sphere = 4 * np.pi * (180 / np.pi) ** 2
 
-    #CTE Find the number of dots expected to be within the box
-    dots_area = ( area / sphere ) * no_dot
+        #CTE Find the number of dots expected to be within the box
+        dots_area = ( area / sphere ) * no_dot
 
-    return area, dots_area
+        return area, dots_area
+    else:
+        return area
 
 def is_in_box(objs, radecbox):
     """Determine which of an array of objects are inside an RA, Dec box.
